@@ -1,0 +1,23 @@
+{
+        "name": "propeller",
+        "description": "Causing some scars in Manta.",
+        "version": "1.0.0",
+        "author": "Joyent (joyent.com)",
+        "private": true,
+        "dependencies": {
+                "assert-plus": "0.1.1",
+                "bunyan": "0.16.6",
+                "posix-getopt": "1.0.0",
+                "sdc-clients": "git+ssh://git@git.joyent.com:node-sdc-clients.git#master",
+                "vasync": "1.5.0"
+        },
+        "devDependencies": {
+                "nodeunit": "0.7.4"
+        },
+        "engines": {
+                "node": "0.10.30"
+        },
+        "scripts": {
+                "start": "node ./server.js"
+        }
+}

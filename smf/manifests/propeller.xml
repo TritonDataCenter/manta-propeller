@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<!DOCTYPE service_bundle SYSTEM "/usr/share/lib/xml/dtd/service_bundle.dtd.1">
+<!-- Copyright (c) 2012, Joyent, Inc. All rights reserved. -->
+<service_bundle type="manifest" name="propeller">
+    <service name="manta/application/propeller" type="service" version="1">
+
+	<create_default_instance enabled="false" />
+	<single_instance />
+
+	<dependency name="network"
+		    grouping="require_all"
+		    restart_on="error"
+		    type="service">
+	    <service_fmri value="svc:/network/physical" />
+	</dependency>
+
+	<dependency name="filesystem"
+		    grouping="require_all"
+		    restart_on="error"
+		    type="service">
+	    <service_fmri value="svc:/system/filesystem/local" />
+	</dependency>
+
+        <dependency name="config-agent"
+                    grouping="optional_all"
+                    restart_on="none"
+                    type="service">
+            <service_fmri value="svc:/smartdc/application/config-agent" />
+        </dependency>
+
+	<exec_method type="method"
+		     name="start"
+		     exec="node server.js -c /opt/smartdc/propeller/etc/config.json -p 80 &amp;"
+		     timeout_seconds="30">
+	    <method_context working_directory="/opt/smartdc/propeller">
+                <method_credential user="root" />
+                <method_environment>
+                    <envvar name="PATH"
+                            value="/opt/smartdc/propeller/build/node/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin"/>
+                    <envvar name="LD_PRELOAD_32"
+                            value="/usr/lib/extendedFILE.so.1" />
+                    <envvar name="NODE_NDEBUG" value="1" />
+                </method_environment>
+            </method_context>
+	</exec_method>
+
+	<exec_method type="method"
+		     name="stop"
+		     exec=":kill"
+		     timeout_seconds="30" />
+
+	<stability value='Unstable' />
+	<template>
+	    <common_name>
+		<loctext xml:lang="C">Causes Manta scars.</loctext>
+	    </common_name>
+	</template>
+
+    </service>
+</service_bundle>

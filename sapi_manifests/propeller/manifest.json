@@ -1,0 +1,5 @@
+{
+	"name": "propeller",
+	"path": "/opt/smartdc/propeller/etc/config.json",
+	"master": true
+}
