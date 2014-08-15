@@ -36,6 +36,6 @@ TODO
 
 # Testing
 
-TODO
+    ./build/node/bin/node server.js -c etc/config.json -p 8080
 
-
+Though it's going to be kinda difficult to test outside of an sdc deployment...
