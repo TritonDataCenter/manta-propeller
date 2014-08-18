@@ -37,42 +37,41 @@ Some things that propeller might be able to do:
 
 # High level design
 
-**Note:** I won't keep "thing".  It's a placeholder for the One True Name (tm).
-
-A "thing" is something that can be messed with in Manta.  It could be a network,
-host, zone, or process.
+A "component" is something that can be messed with in Manta.  It could be a
+network, host, zone, or process.
 
 An "action" is composed of an action to perform along with optional cleanup.
 For example, "rebootZone" is an action that would reboot a zone.  It doesn't
-require a cleanup step.  Another could be "corruptZoneTraffic" that would set
-up an ipd rule to correupt some percentage of traffic.  The cleanup step would
+require a cleanup step.  Another could be "corruptZoneTraffic" that would set up
+an ipd rule to corrupt some percentage of traffic.  The cleanup step would
 remove the ipd rule.
 
 Since there will be many disparate actions, it'll follow a plugin model where an
-action works on one "thing".  When propeller starts for the first time it will
-gather all the datacenter "things" with as much information as possible about
-the "thing".  Propeller will choose an "action" and a corresponding "thing",
-record that it is going to perform "action" on "thing", and execute.  It will do
-that up to the configured "chaos threshold".  After some time period it will
-undo the set of "actions".  Once all actions have been undone, propeller will
-monitor whether Manta has recovered.  It will not perform a new set of actions
-until it has.  It will alarm if Manta takes "too long" to recover.
+action works on one "component".  When propeller starts for the first time it
+will gather all the datacenter "components" with as much information as possible
+about the "component".  Propeller will choose an "action" and a corresponding
+"component", record that it is going to perform "action" on "component", and
+execute.  It will do that up to the configured "chaos threshold".  After some
+time period it will undo the set of "actions".  Once all actions have been
+undone, propeller will monitor whether Manta has recovered.  It will not perform
+a new set of actions until it has.  It will alarm if Manta takes "too long" to
+recover.
 
 # Implementation plan
 
-1. Propeller repo.
+1. Propeller repo (done).
+1. Set up deployable repo (done).
 1. Common for x-dc sdc calls (needs to call at least sapi, vmapi, cnapi).
 1. Common to handle running commands on hosts and in zones.
 1. Propeller daemon with one or two actions (probably enable/disable zones and
    processes).
 1. Tools to query outstanding and historical action sets.
 1. Tools to undo current actions.
-1. Set up deployable repo.
 1. Implement lots of actions.
 1. Cause some scars!
 
 # Questions
 
-1. Should it also check to see that the *thing* came back up?  Is the process
-   serving requests, for example?  If so, there should be a "check" function
-   along with the "action" and "cleanup".
+1. Should it also check to see that the *component* came back up?  Is the
+   process serving requests, for example?  If so, there should be a "check"
+   function along with the "action" and "cleanup".
