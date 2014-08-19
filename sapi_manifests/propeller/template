@@ -19,7 +19,7 @@
         "rejectUnauthorized": {{MANTA_REJECT_UNAUTHORIZED}}
     },
     "__comment__": "These next entries are for finding sdc services in the dc.",
-    "dns_domain": "{{DNS_DOMAIN}}",
+    "dnsDomain": "{{DNS_DOMAIN}}",
     "region": "{{REGION}}",
     "datacenter": "{{DATACENTER}}",
     "ufds": {

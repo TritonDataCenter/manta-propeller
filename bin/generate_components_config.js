@@ -1,13 +1,12 @@
 #!/usr/bin/env node
-// -*- mode: js -*-
-// Copyright 2012 Joyent, Inc.  All rights reserved.
+// Copyright (c) 2014, Joyent, Inc. All rights reserved.
 
 var assert = require('assert-plus');
 var bunyan = require('bunyan');
 var fs = require('fs');
 var getopt = require('posix-getopt');
+var lib = require('../lib');
 var path = require('path');
-var sdc = require('sdc-clients');
 var vasync = require('vasync');
 
 var LOG = bunyan.createLogger({
@@ -46,7 +45,7 @@ function parseOptions() {
                         opts.configFile = option.optarg;
                         break;
                 case 'f':
-                        opts.outputFileName = option.optarg;
+                        opts.outputFilename = option.optarg;
                         break;
                 default:
                         usage('Unknown option: ' + option.option);
@@ -55,7 +54,7 @@ function parseOptions() {
         }
 
         // Now set some defaults.
-        opts.outputFileName = opts.outputFileName ||
+        opts.outputFilename = opts.outputFilename ||
                 '/opt/smartdc/propeller/etc/components.json';
         //Servers don't have an ip4addr for the nic tagged with 'manta', so
         // we default 'admin' here.
@@ -73,12 +72,12 @@ function parseOptions() {
         if (!config.ufds) {
                 usage('Config file didn\'t contain a ufds block.');
         }
-        opts.ufdsConfig = config.ufds;
+        opts.ufds = config.ufds;
 
-        if (!config.dns_domain) {
-                usage('Config file didn\'t contain a dns_domain.');
+        if (!config.dnsDomain) {
+                usage('Config file didn\'t contain a dnsDomain.');
         }
-        opts.dnsDomain = config.dns_domain;
+        opts.dnsDomain = config.dnsDomain;
 
         if (!config.datacenter) {
                 usage('Config file didn\'t contain a datacenter.');
@@ -94,144 +93,6 @@ function parseOptions() {
 }
 
 
-function getDcClients(opts, cb) {
-        var self = this;
-        var clients = {};
-
-        function url(svc) {
-                return ('http://' + svc + '.' + opts.dc + '.' + opts.dnsDomain);
-        }
-
-        vasync.pipeline({
-                'funcs': [
-                        function cnapi(_, subcb) {
-                                self.log.debug({
-                                        'client': 'cnapi',
-                                        'dc': opts.dc,
-                                        'url': url('cnapi')
-                                });
-                                clients['CNAPI'] = new sdc.CNAPI({
-                                        log: self.log,
-                                        url: url('cnapi'),
-                                        agent: false
-                                });
-                                subcb();
-                        },
-                        function vmapi(_, subcb) {
-                                self.log.debug({
-                                        'client': 'vmapi',
-                                        'dc': opts.dc,
-                                        'url': url('vmapi')
-                                });
-                                clients['VMAPI'] = new sdc.VMAPI({
-                                        log: self.log,
-                                        url: url('vmapi'),
-                                        agent: false
-                                });
-                                subcb();
-                        }
-                ]
-        }, function (err) {
-                cb(err, clients);
-        });
-}
-
-
-function setupSingleDcClients(_, cb) {
-        var self = this;
-        vasync.pipeline({
-                'funcs': [
-                        function ufds(_2, subcb) {
-                                self.log.debug({
-                                        'ufdsConfig': self.UFDS_CONFIG
-                                }, 'connecting to ufds');
-
-                                self['UFDS'] = new sdc.UFDS(self.UFDS_CONFIG);
-
-                                self['UFDS'].on('ready', function (err) {
-                                        self.log.debug({
-                                                'ufdsConfig': self.UFDS_CONFIG,
-                                                'err': err
-                                        }, 'ufds onReady');
-                                        return (subcb(err));
-                                });
-                        },
-                        function sapi(_2, subcb) {
-                                var url = 'http://sapi.' + self.DATACENTER +
-                                        '.' + self.DNS_DOMAIN;
-                                self.log.debug({
-                                        'client': 'sapi',
-                                        'url': url
-                                });
-                                self['SAPI'] = new sdc.SAPI({
-                                        log: self.log,
-                                        url: url,
-                                        agent: false
-                                });
-                                subcb();
-                        }
-                ]
-        }, function (err) {
-                cb(err);
-        });
-}
-
-
-function getDcs(_, cb) {
-        var self = this;
-        var ufds = self['UFDS'];
-        ufds.listDatacenters(self.REGION, function (err, res) {
-                if (err) {
-                        return (cb(err));
-                }
-                if (res.length === 0) {
-                        self.log.info({
-                                res: res,
-                                region: self.REGION
-                        }, 'ufds listDatacenters result');
-                        return (cb(new Error('no datacenters found')));
-                }
-                var dcs = {};
-                res.forEach(function (datacenter) {
-                        //Take the first sdc resolver we come across.
-                        if (dcs[datacenter.datacenter] === undefined) {
-                                dcs[datacenter.datacenter] = {};
-                        }
-                });
-                self['DCS'] = dcs;
-                return (cb());
-        });
-}
-
-
-function setupXDcClients(_, cb) {
-        var self = this;
-        var dcs = Object.keys(self.DCS);
-        var i = 0;
-
-        function setupNextClient() {
-                var dc = dcs[i];
-                if (dc === undefined) {
-                        return (cb());
-                }
-                var opts = {
-                        'dc': dc,
-                        'dnsDomain': self.DNS_DOMAIN
-                };
-                getDcClients.call(self, opts, function (err, clients) {
-                        if (err) {
-                                cb(err);
-                                return;
-                        }
-                        self.DCS[dc]['CLIENT'] = clients;
-                        ++i;
-                        setupNextClient();
-                });
-        }
-        setupNextClient();
-}
-
-
 function findVm(instance, cb) {
         var self = this;
         var uuid = instance.uuid;
@@ -242,7 +103,7 @@ function findVm(instance, cb) {
                 return (cb(new Error('instance has no DATACENTER: ' + uuid)));
         }
         var dc = instance.metadata.DATACENTER;
-        var vmapi = self.DCS[dc].CLIENT.VMAPI;
+        var vmapi = self[dc].vmapi;
         return (vmapi.getVm({ uuid: uuid }, function (err, vm) {
                 if (err && err.message === 'socket hang up') {
                         self.log.info({ uuid: uuid, dc: dc },
@@ -256,10 +117,10 @@ function findVm(instance, cb) {
 
 function findServer(server, cb) {
         var self = this;
-        var dcs = Object.keys(self.DCS);
+        var dcs = self.datacenters;
         vasync.forEachParallel({
                 'inputs': dcs.map(function (dc) {
-                        return (self.DCS[dc].CLIENT.CNAPI);
+                        return (self[dc].cnapi);
                 }),
                 'func': function (client, subcb) {
                         client.getServer(server, subcb);
@@ -277,58 +138,47 @@ function findServer(server, cb) {
 
 //--- Main
 
-var _self = this;
-_self.log = LOG;
 var _opts = parseOptions();
-_self['OUTPUT_FILENAME'] = _opts.outputFileName;
-_self['REGION'] = _opts.region;
-_self['DATACENTER'] = _opts.datacenter;
-_self['DNS_DOMAIN'] = _opts.dnsDomain;
-_self['NETWORK_TAG'] = _opts.networkTag;
-_self['AGENT_NETWORK_TAG'] = _opts.agentNetworkTag;
-_self['UFDS_CONFIG'] = _opts.ufdsConfig;
-
-
-_self.log.debug({
-        'outputFile': _self['OUTPUT_FILENAME'],
-        'region': _self['REGION'],
-        'datacenter': _self['DATACENTER'],
-        'dnsDomain': _self['DNS_DOMAIN'],
-        'networkTag': _self['NETWORK_TAG'],
-        'agentNetworkTag': _self['AGENT_NETWORK_TAG'],
-        'ufdsConfig': _self['UFDS_CONFIG']
-});
+LOG.debug(_opts);
+_opts.log = LOG;
 
 vasync.pipeline({
+        'arg': _opts,
         'funcs': [
-                setupSingleDcClients.bind(_self),
-                getDcs.bind(_self),
-                setupXDcClients.bind(_self),
+                function setupSdcClients(_, subcb) {
+                        lib.initSdcClients(_opts, function (err, sdc) {
+                                if (err) {
+                                        return (subcb(err));
+                                }
+                                _.sdc = sdc;
+                                return (subcb());
+                        });
+                },
                 function lookupPoseidon(_, subcb) {
-                        _self.log.debug({
-                                'datacenter': _self['DATACENTER']
+                        _.log.debug({
+                                'datacenter': _.datacenter
                         }, 'connecting to ufds in dc');
-                        var ufds = _self.UFDS;
+                        var ufds = _.sdc.ufds;
                         ufds.getUser('poseidon', function (err, user) {
                                 if (err) {
                                         subcb(err);
                                         return;
                                 }
-                                _self['POSEIDON'] = user;
-                                _self.log.debug({
-                                        'uuid': _self['POSEIDON'].uuid
+                                _.poseidon = user;
+                                _.log.debug({
+                                        'uuid': _.poseidon.uuid
                                 }, 'found poseidon');
                                 subcb();
                         });
                 },
                 function lookupMantaApplication(_, subcb) {
-                        _self.log.debug({
-                                'datacenter': _self['DATACENTER']
+                        _.log.debug({
+                                'datacenter': _.datacenter
                         }, 'connecting to sapi in dc to get manta application');
-                        var sapi = _self.SAPI;
+                        var sapi = _.sdc.sapi;
                         var search = {
                                 'name': 'manta',
-                                'owner_uuid':  _self['POSEIDON'].uuid,
+                                'owner_uuid':  _.poseidon.uuid,
                                 'include_master': true
                         };
                         sapi.listApplications(search, function (err, apps) {
@@ -341,25 +191,25 @@ vasync.pipeline({
                                                         'manta application'));
                                         return;
                                 }
-                                _self['MANTA'] = apps[0];
-                                _self.log.debug({
-                                        'manta': _self['MANTA'].uuid
+                                _.manta = apps[0];
+                                _.log.debug({
+                                        'manta': _.manta.uuid
                                 }, 'found the manta application');
                                 subcb();
                         });
                 },
                 function lookupInstances(_, subcb) {
-                        _self.log.debug({
-                                'datacenter': _self['DATACENTER']
+                        _.log.debug({
+                                'datacenter': _.datacenter
                         }, 'connecting to sapi in dc to lookup instances');
-                        var sapi = _self.SAPI;
+                        var sapi = _.sdc.sapi;
                         function onr(err, objs) {
                                 if (err) {
                                         subcb(err);
                                         return;
                                 }
 
-                                _self['SAPI_INSTANCES'] = {};
+                                _.sapiInstances = {};
                                 var svcs = Object.keys(objs.instances);
                                 for (var i = 0; i < svcs.length; ++i) {
                                         var svc_uuid = svcs[i];
@@ -367,12 +217,12 @@ vasync.pipeline({
                                         for (var j = 0; j < ins.length; ++j) {
                                                 var o = ins[j];
                                                 var k = o.uuid;
-                                                _self['SAPI_INSTANCES'][k] = o;
+                                                _.sapiInstances[k] = o;
                                         }
                                 }
-                                _self.log.debug({
+                                _.log.debug({
                                         'instances': Object.keys(
-                                                _self['SAPI_INSTANCES']).sort()
+                                                _.sapiInstances).sort()
                                 }, 'found sapi instances');
                                 subcb();
                         }
@@ -380,42 +230,41 @@ vasync.pipeline({
                         var op = {
                                 'include_master': true
                         };
-                        sapi.getApplicationObjects(_self.MANTA.uuid, op, onr);
+                        sapi.getApplicationObjects(_.manta.uuid, op, onr);
                 },
                 function lookupVms(_, subcb) {
-                        _self.log.debug('looking up vms');
-                        var inputs = Object.keys(_self['SAPI_INSTANCES']).map(
+                        _.log.debug('looking up vms');
+                        var inputs = Object.keys(_.sapiInstances).map(
                                 function (k) {
-                                        return (_self['SAPI_INSTANCES'][k]);
+                                        return (_.sapiInstances[k]);
                                 });
                         vasync.forEachParallel({
                                 'inputs': inputs,
-                                'func': findVm.bind(_self)
+                                'func': findVm.bind(_.sdc)
                         }, function (err, results) {
                                 if (err) {
                                         subcb(err);
                                         return;
                                 }
-                                _self['VMAPI_VMS'] = {};
+                                _.vmapiVms = {};
                                 var opers = results.operations;
                                 for (var i = 0; i < opers.length; ++i) {
                                         var uuid = inputs[i].uuid;
                                         var res = opers[i].result;
-                                        _self['VMAPI_VMS'][uuid] = res;
+                                        _.vmapiVms[uuid] = res;
                                 }
-                                _self.log.debug({
-                                        'vms': Object.keys(
-                                                _self['VMAPI_VMS']).sort()
+                                _.log.debug({
+                                        'vms': Object.keys(_.vmapiVms).sort()
                                 }, 'found vmapi vms');
                                 subcb();
                         });
                 },
                 function lookupServers(_, subcb) {
-                        _self.log.debug('looking up servers');
+                        _.log.debug('looking up servers');
                         var servers = [];
-                        var vms = Object.keys(_self['VMAPI_VMS']);
+                        var vms = Object.keys(_.vmapiVms);
                         for (var i = 0; i < vms.length; ++i) {
-                                var vm = _self['VMAPI_VMS'][vms[i]];
+                                var vm = _.vmapiVms[vms[i]];
                                 var server = vm.server_uuid;
                                 if (servers.indexOf(server) === -1) {
                                         servers.push(server);
@@ -423,30 +272,30 @@ vasync.pipeline({
                         }
                         vasync.forEachParallel({
                                 'inputs': servers,
-                                'func': findServer.bind(_self)
+                                'func': findServer.bind(_.sdc)
                         }, function (err, results) {
                                 if (err) {
                                         subcb(err);
                                         return;
                                 }
                                 var opers = results.operations;
-                                _self['CNAPI_SERVERS'] = {};
+                                _.cnapiServers = {};
                                 for (var j = 0; j < opers.length; ++j) {
                                         var uuid = servers[j];
                                         var res = opers[j].result;
-                                        _self['CNAPI_SERVERS'][uuid] = res;
+                                        _.cnapiServers[uuid] = res;
                                 }
-                                _self.log.debug({
+                                _.log.debug({
                                         'servers': Object.keys(
-                                                _self['CNAPI_SERVERS']).sort()
+                                                _.cnapiServers).sort()
                                 }, 'found cnapi servers');
                                 subcb();
                         });
                 },
                 function gatherComponents(_, subcb) {
-                        _self.log.debug('gathering components');
-                        var instances = Object.keys(_self['SAPI_INSTANCES']);
-                        _self['COMPONENTS'] = {
+                        _.log.debug('gathering components');
+                        var instances = Object.keys(_.sapiInstances);
+                        _.components = {
                                 'servers': {},
                                 'vms': {}
                         };
@@ -454,10 +303,10 @@ vasync.pipeline({
                         //First the regular applications...
                         for (var i = 0; i < instances.length; ++i) {
                                 var uuid = instances[i];
-                                var instance = _self['SAPI_INSTANCES'][uuid];
-                                var vm = _self['VMAPI_VMS'][uuid];
+                                var instance = _.sapiInstances[uuid];
+                                var vm = _.vmapiVms[uuid];
                                 var server_uuid = vm.server_uuid;
-                                var sv = _self['CNAPI_SERVERS'][server_uuid];
+                                var sv = _.cnapiServers[server_uuid];
 
                                 //Not something we're interested in...
                                 if (!vm.tags ||
@@ -485,7 +334,7 @@ vasync.pipeline({
                                         'admin_ip': instance.metadata.ADMIN_IP
                                 };
 
-                                _self['COMPONENTS'].vms[uuid] = vmdet;
+                                _.components.vms[uuid] = vmdet;
 
                                 // Add server (if it's not already there)
                                 var serdet = {
@@ -507,24 +356,26 @@ vasync.pipeline({
                                         });
                                 });
 
-                                if (!_self['COMPONENTS'].servers[server_uuid]) {
-                                        var svs = _self['COMPONENTS'].servers;
+                                if (!_.components.servers[server_uuid]) {
+                                        var svs = _.components.servers;
                                         svs[server_uuid] = serdet;
                                 }
                         }
 
                         subcb();
+                },
+                function writeFile(_, subcb) {
+                        var serialized = JSON.stringify(_.components, null, 2);
+                        fs.writeFileSync(_.outputFilename, serialized);
+                        return (subcb());
                 }
         ]
 }, function (err) {
         if (err) {
-                _self.log.fatal(err);
+                LOG.fatal(err);
                 process.exit(1);
         }
 
-        //Ok, now output components...
-        var serialized = JSON.stringify(_self['COMPONENTS'], null, 2);
-        fs.writeFileSync(_self['OUTPUT_FILENAME'], serialized);
-        _self.log.debug('Done.');
+        LOG.debug('Done.');
         process.exit(0);
 });
