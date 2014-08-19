@@ -1,0 +1,53 @@
+{
+  "__common__": [
+    "registrar"
+  ],
+  "authcache": [
+    "redis",
+    "mahi",
+    "mahi-server",
+    "mahi-replicator"
+  ],
+  "compute": [
+    "marlin/lackey"
+  ],
+  "electric-moray": [
+    "haproxy",
+    "electric-moray-2021"
+  ],
+  "jobpuller": [
+    "jobpuller"
+  ],
+  "jobsupervisor": [
+    "jobsupervisor"
+  ],
+  "loadbalancer": [
+    "stud",
+    "haproxy",
+    "muppet"
+  ],
+  "medusa": [
+    "medusa"
+  ],
+  "moray": [
+    "haproxy",
+    "moray-2021"
+  ],
+  "nameservice": [
+    "binder",
+    "zookeeper"
+  ],
+  "postgres": [
+    "manatee-backupserver",
+    "manatee-snapshotter",
+    "manatee-sitter"
+  ],
+  "storage": [
+    "minnow",
+    "mako"
+  ],
+  "webapi": [
+    "haproxy",
+    "muskie-8081"
+  ]
+}

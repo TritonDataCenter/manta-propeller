@@ -34,6 +34,19 @@ function manta_add_propeller_to_path {
 function manta_setup_propeller {
     local SIZE=$(json -f ${METADATA} SIZE)
 
+    ln -f -s /opt/smartdc/propeller/etc/processes-$SIZE.json \
+        /opt/smartdc/propeller/etc/processes.json
+    if [[ $? != 0 ]]; then
+        echo "Unable to link /opt/smartdc/propeller/etc/processes-$SIZE.json."
+        exit 1;
+    fi
+
+    /opt/smartdc/propeller/bin/generate_components_config.js
+    if [[ $? != 0 ]]; then
+        echo "Unable to generate /opt/smartdc/propeller/etc/components.json."
+        exit 1;
+    fi
+
     #Server
     svccfg import /opt/smartdc/propeller/smf/manifests/propeller.xml \
         || fatal "unable to import propeller manifest"

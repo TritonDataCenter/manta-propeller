@@ -12,8 +12,11 @@ down problems in other-than-prod environments before problems arise in prod.
 
 Some things that propeller might be able to do:
 
-1. Disable individual processes.
+1. svcadm disable/enable individual processes.
+1. pstop individual processes.
+1. Disable/enable "process groups" (i.e. all muskie node processes)
 1. Shutdown zones or hosts.
+1. Ungraceful host/zone power off.
 1. Block/corrupt network traffic to/from a zone.
 1. Block/corrupt network traffic to/from a datacenter.
 1. Exhaust resources (cpu, memory, disk, etc) in a zone or on a host.

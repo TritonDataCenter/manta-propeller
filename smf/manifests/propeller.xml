@@ -30,7 +30,7 @@
 
 	<exec_method type="method"
 		     name="start"
-		     exec="node server.js -c /opt/smartdc/propeller/etc/config.json -p 80 &amp;"
+		     exec="node server.js -c /opt/smartdc/propeller/etc/components.json -c /opt/smartdc/propeller/etc/processes.json -c /opt/smartdc/propeller/etc/config.json -p 80 &amp;"
 		     timeout_seconds="30">
 	    <method_context working_directory="/opt/smartdc/propeller">
                 <method_credential user="root" />
