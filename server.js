@@ -72,7 +72,7 @@ lib.createAndStartServer(_opts, function (err) {
                 LOG.fatal(err, 'Error starting server');
                 return;
         }
-        LOG.info('Server started.');
+        LOG.info('Done creating and starting server.');
 });
 
 process.on('uncaughtException', function (err) {
