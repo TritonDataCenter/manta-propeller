@@ -11,7 +11,7 @@
                 "once": "1.3.0",
                 "posix-getopt": "1.0.0",
                 "restify": "2.8.2",
-                "sdc-clients": "git+ssh://git@git.joyent.com:node-sdc-clients.git#master",
+                "sdc-clients": "git+ssh://git@github.com:joyent/node-sdc-clients.git#master",
                 "manta": "1.4.3",
                 "vasync": "1.5.0"
         },
