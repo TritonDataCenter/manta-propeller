@@ -71,13 +71,14 @@ recover.
 
 # Implementation plan
 
-1. Propeller repo (done).
-1. Set up deployable repo (done).
-1. Generate components (done).
-1. Common for x-dc sdc calls (needs to call at least sapi, vmapi, cnapi) (done).
-1. Common to handle running commands on hosts and in zones (done).
-1. Propeller daemon with one or two actions (probably enable/disable zones and
-   processes).
+1. Propeller repo **(done)**.
+1. Set up deployable repo **(done)**.
+1. Generate components **(done)**.
+1. Common for x-dc sdc calls (needs to call at least sapi, vmapi, cnapi)
+   **(done)**.
+1. Common to handle running commands on hosts and in zones **(done)**.
+1. Propeller daemon with one or two actions (rebooting zones) **(done)**.
+1. Persist actions to something on disk (LevelDB?), to zfs dataset.
 1. Tools to query outstanding and historical action sets.
 1. Tools to undo current actions.
 1. Implement lots of actions.
