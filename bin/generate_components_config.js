@@ -154,6 +154,7 @@ vasync.pipeline({
         'arg': _opts,
         'funcs': [
                 function setupSdcClients(_, subcb) {
+                        _.log.debug('initing sdc clients');
                         lib.initSdcClients(_opts, function (err, sdc) {
                                 if (err) {
                                         return (subcb(err));
