@@ -338,9 +338,7 @@ vasync.pipeline({
                                         'role': instance.params.tags.manta_role,
                                         'datacenter': sv.datacenter,
                                         'server': server_uuid,
-                                        'shard': instance.metadata.SHARD,
-                                        'manta_ip': instance.metadata.MANTA_IP,
-                                        'admin_ip': instance.metadata.ADMIN_IP
+                                        'shard': instance.metadata.SHARD
                                 };
 
                                 _.components.vms[uuid] = vmdet;
