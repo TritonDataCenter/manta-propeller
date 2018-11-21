@@ -15,9 +15,6 @@
                 "manta": "1.4.3",
                 "vasync": "1.5.0"
         },
-        "devDependencies": {
-                "nodeunit": "0.7.4"
-        },
         "engines": {
                 "node": "0.10.30"
         },

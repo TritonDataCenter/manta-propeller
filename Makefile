@@ -5,7 +5,7 @@
 #
 
 #
-# Copyright (c) 2014, Joyent, Inc.
+# Copyright (c) 2018, Joyent, Inc.
 #
 
 #
@@ -80,11 +80,6 @@ $(NODEUNIT): | $(NPM_EXEC)
 	$(NPM) install
 
 CLEAN_FILES += $(NODEUNIT) ./node_modules/nodeunit
-
-.PHONY: test
-test: $(NODEUNIT)
-	mkdir -p ./tmp
-	find test/ -name '*.test.js' | xargs -n 1 $(NODEUNIT)
 
 .PHONY: scripts
 scripts: deps/manta-scripts/.git
